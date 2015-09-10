@@ -1,0 +1,2 @@
+python download_data.py
+python smooth data data_s

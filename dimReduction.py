@@ -36,6 +36,7 @@ LABEL_DICT = {
 	'vacant': 2,
 }
 TIME_INTERVAL = 5 # 5min before, 5min after
+TRAIN_SET_RATIO = 0.8
 
 def window(input_x, out_dir):
 	data_windowed = list()
@@ -162,16 +163,23 @@ if __name__ == '__main__':
 	eps = 0.5
 	with Timer('Random Projection ...'):
 		data_reduced = reduction(eps, code, out_dir)
+	reduced_dim = data_reduced.shape[1]
 	with open('{}/reduction_setting'.format(out_dir), 'w') as fp:
 		line = ', '.join(str(e) for e in [n_atom, eps])
 		fp.write( line + '\n')
 
-	
+	label = readLabel([args['label_filename']])[1:]
+	cutIndex = int(TRAIN_SET_RATIO*len(data_reduced))
+	writeFeature('./svm_train', data_reduced[:cutIndex], label[:cutIndex]) 
+	writeFeature('./svm_test', data_reduced[cutIndex:], label[cutIndex:]) 
 	## SVM training
-	Y_train = readLabel([args['label_filename']])[1:]
-	X_train = data_reduced
-	#writeFeature(fileName, instances, label=[])
-	#X_train, Y_train = readFeature('./svm_train')
+	X_train, Y_train = readFeature('./svm_train',reduced_dim)
 	prob = svm_problem(Y_train, X_train)
 	param = svm_parameter('-t 1 -q -d 2')
 	model = svm_train(prob, param)
+
+	## SVM predicting
+	X_test, Y_test = readFeature('./svm_test', reduced_dim)
+	p_labels, p_acc, p_vals = svm_predict(Y_test, X_test, model)
+	print p_acc	
+	print confusion_matrix(Y_test, p_labels)

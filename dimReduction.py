@@ -7,9 +7,12 @@ import random
 from sklearn.decomposition import sparse_encode
 from sklearn import random_projection
 from sklearn.decomposition import sparse_encode
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score
 
 #from svm import svm_problem, svm_parameter
 #from svmutil import svm_train, svm_predict, svm_save_model, svm_read_problem
+from sklearn import svm
 
 SENSOR_DICT = {
 	# PIR, 34 index is always broken and not provide any info
@@ -37,6 +40,7 @@ LABEL_DICT = {
 }
 TIME_INTERVAL = 5 # 5min before, 5min after
 TRAIN_SET_RATIO = 0.8
+PROJECT_DIM = 1000
 
 def window(input_x, out_dir):
 	data_windowed = list()
@@ -82,7 +86,7 @@ def sparsity(input_x):
 
 def reduction(eps, input_x, out_dir):
 	print 'JL bound:', random_projection.johnson_lindenstrauss_min_dim(len(input_x[0]),eps),'(eps={})'.format(eps)
-	transformer = random_projection.GaussianRandomProjection(50,eps)
+	transformer = random_projection.GaussianRandomProjection(PROJECT_DIM,eps)
 	data_reduced = transformer.fit_transform(code)
 	with open('{}/projection'.format(out_dir), "w") as op:
 		for component in data_reduced:
@@ -171,15 +175,16 @@ if __name__ == '__main__':
 	label = readLabel([args['label_filename']])[1:]
 	cutIndex = int(TRAIN_SET_RATIO*len(data_reduced))
 	writeFeature('./svm_train', data_reduced[:cutIndex], label[:cutIndex]) 
-	writeFeature('./svm_test', data_reduced[cutIndex:], label[cutIndex:]) 
+	writeFeature('./svm_test', data_reduced[cutIndex:], label[cutIndex:])
 	## SVM training
-	X_train, Y_train = readFeature('./svm_train',reduced_dim)
-	prob = svm_problem(Y_train, X_train)
-	param = svm_parameter('-t 1 -q -d 2')
-	model = svm_train(prob, param)
+	#X_train, Y_train = readFeature('./svm_train',reduced_dim)
+	X_train, Y_train = readFeature('{}/svm_train'.format(out_dir),PROJECT_DIM)
+	X_test, Y_test = readFeature('{}/svm_test'.format(out_dir), PROJECT_DIM)
 
-	## SVM predicting
-	X_test, Y_test = readFeature('./svm_test', reduced_dim)
-	p_labels, p_acc, p_vals = svm_predict(Y_test, X_test, model)
-	print p_acc	
+	#clf = svm.SVC(kernel='rbf', class_weight={0: 60, 1: 3, 2: 1})
+	clf = svm.SVC(kernel='linear', class_weight={0: 60, 1: 3, 2: 1})
+	clf.fit(X_train, Y_train)
+
+	p_labels = clf.predict(X_test)
 	print confusion_matrix(Y_test, p_labels)
+	print f1_score(Y_test, p_labels, average='weighted')  

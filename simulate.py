@@ -4,12 +4,13 @@ import math
 from cvxpy import *
 
 N = 2000
-k = 400
+k = 300
 
-ITERATION = 1
+ITERATION = 100
 
 if __name__ == '__main__':
-	for m in xrange(N,2*k-1,-1):
+	#for m in xrange(N,2*k-1,-50):
+	for m in xrange(1200,1000,-10):
 		successful = 0
 		for j in xrange(ITERATION):
 			support = random.sample(range(N),k)
@@ -37,5 +38,5 @@ if __name__ == '__main__':
 			if good == N:
 				successful += 1
 		print '(N={},k={})'.format(N,k), 'm={}'.format(m), '{}/{}={}'.format(successful, ITERATION, successful/float(ITERATION))
-		with open('simlog3', 'a') as fw:
+		with open('simlog4', 'a') as fw:
 			print >> fw, '(N={},k={})'.format(N,k), 'm={}'.format(m), '{}/{}={}'.format(successful, ITERATION, successful/float(ITERATION))
